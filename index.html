@@ -1,0 +1,739 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Executive AI Dashboard</title>
+<style>
+  :root {
+    --green: #1F8A44;
+    --amber: #C8780A;
+    --red: #D70015;
+    --blue: #0071E3;
+    --bg: #F5F5F7;
+    --card-bg: #FFFFFF;
+    --text: #1D1D1F;
+    --text-secondary: #6E6E73;
+    --border: #D2D2D7;
+    --nav-bg: rgba(255,255,255,0.82);
+    --radius: 18px;
+    --shadow: 0 2px 20px rgba(0,0,0,0.07);
+    font-size: 15px;
+  }
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Inter', sans-serif; background: var(--bg); color: var(--text); -webkit-font-smoothing: antialiased; }
+
+  /* NAV */
+  nav {
+    position: sticky; top: 0; z-index: 100;
+    background: var(--nav-bg);
+    backdrop-filter: blur(20px) saturate(180%);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
+    border-bottom: 1px solid rgba(0,0,0,0.08);
+    padding: 0 24px;
+    display: flex; align-items: center; height: 52px; gap: 24px;
+  }
+  .nav-brand { font-size: 17px; font-weight: 600; letter-spacing: -0.02em; color: var(--text); white-space: nowrap; }
+  .nav-brand span { color: var(--blue); }
+
+  /* SEGMENTED CONTROL */
+  .seg-wrap { flex: 1; display: flex; justify-content: center; }
+  .segmented {
+    display: inline-flex; background: rgba(0,0,0,0.06);
+    border-radius: 10px; padding: 3px; gap: 2px;
+  }
+  .seg-btn {
+    border: none; background: transparent; cursor: pointer;
+    padding: 5px 14px; border-radius: 8px;
+    font-size: 13px; font-weight: 500; color: var(--text-secondary);
+    transition: all .2s; white-space: nowrap;
+  }
+  .seg-btn.active { background: white; color: var(--text); box-shadow: 0 1px 4px rgba(0,0,0,0.12); font-weight: 600; }
+  .seg-btn:hover:not(.active) { color: var(--text); }
+
+  .nav-date { font-size: 12px; color: var(--text-secondary); white-space: nowrap; }
+
+  /* HERO */
+  .hero {
+    background: linear-gradient(180deg, #fff 0%, var(--bg) 100%);
+    padding: 48px 24px 36px;
+    text-align: center;
+  }
+  .hero h1 {
+    font-size: clamp(28px, 4vw, 44px); font-weight: 700;
+    letter-spacing: -0.03em; color: var(--text); line-height: 1.1;
+  }
+  .hero p { margin-top: 10px; font-size: 17px; color: var(--text-secondary); }
+
+  /* LAYOUT */
+  .page { display: none; animation: fadeLift .35s ease both; }
+  .page.active { display: block; }
+  @keyframes fadeLift { from { opacity:0; transform:translateY(12px); } to { opacity:1; transform:none; } }
+  @media (prefers-reduced-motion: reduce) { .page { animation: none !important; } }
+
+  .container { max-width: 1200px; margin: 0 auto; padding: 0 24px 64px; }
+
+  /* SECTION */
+  .section { margin-top: 40px; }
+  .section-title {
+    font-size: 22px; font-weight: 700; letter-spacing: -0.02em;
+    margin-bottom: 16px; color: var(--text);
+  }
+
+  /* KPI GRID */
+  .kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 16px; }
+  .kpi-card {
+    background: var(--card-bg); border-radius: var(--radius);
+    padding: 24px 24px 20px; box-shadow: var(--shadow);
+    border: 1px solid rgba(0,0,0,0.04);
+  }
+  .kpi-header { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; }
+  .kpi-dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
+  .kpi-label { font-size: 13px; color: var(--text-secondary); font-weight: 500; line-height: 1.3; }
+  .kpi-value { font-size: 36px; font-weight: 700; letter-spacing: -0.03em; line-height: 1; font-variant-numeric: tabular-nums; }
+  .kpi-sub { font-size: 12px; color: var(--text-secondary); margin-top: 6px; }
+  .dot-green { background: var(--green); }
+  .dot-amber { background: var(--amber); }
+  .dot-red { background: var(--red); }
+  .dot-blue { background: var(--blue); }
+
+  /* FILTERS */
+  .filters {
+    background: var(--card-bg); border-radius: var(--radius);
+    padding: 18px 20px; box-shadow: var(--shadow);
+    border: 1px solid rgba(0,0,0,0.04);
+    display: flex; flex-wrap: wrap; gap: 14px; align-items: center;
+  }
+  .filter-group { display: flex; align-items: center; gap: 8px; }
+  .filter-label { font-size: 13px; color: var(--text-secondary); font-weight: 500; }
+  select {
+    border: 1px solid var(--border); border-radius: 8px;
+    padding: 6px 10px; font-size: 13px; background: var(--bg);
+    color: var(--text); cursor: pointer; outline: none;
+    font-family: inherit;
+  }
+  select:focus { border-color: var(--blue); }
+
+  /* TABLE */
+  .table-wrap {
+    background: var(--card-bg); border-radius: var(--radius);
+    box-shadow: var(--shadow); border: 1px solid rgba(0,0,0,0.04);
+    overflow: hidden;
+  }
+  table { width: 100%; border-collapse: collapse; }
+  thead th {
+    font-size: 12px; font-weight: 600; text-transform: uppercase;
+    letter-spacing: 0.06em; color: var(--text-secondary);
+    padding: 12px 16px; text-align: left; border-bottom: 1px solid var(--border);
+    background: rgba(0,0,0,0.01);
+  }
+  tbody tr { border-bottom: 1px solid var(--border); transition: background .15s; }
+  tbody tr:last-child { border-bottom: none; }
+  tbody tr:hover { background: rgba(0,113,227,0.03); }
+  tbody td { padding: 12px 16px; font-size: 13.5px; vertical-align: middle; }
+
+  /* BADGES */
+  .badge {
+    display: inline-flex; align-items: center; gap: 5px;
+    padding: 3px 9px; border-radius: 20px;
+    font-size: 12px; font-weight: 600; white-space: nowrap;
+  }
+  .badge-green { background: rgba(31,138,68,.1); color: #0D5C2C; }
+  .badge-amber { background: rgba(200,120,10,.1); color: #7A4800; }
+  .badge-red { background: rgba(215,0,21,.1); color: #8B0011; }
+  .badge-blue { background: rgba(0,113,227,.1); color: #0058C4; }
+  .badge-gray { background: rgba(0,0,0,.06); color: var(--text-secondary); }
+  .badge::before { content: ''; width:6px; height:6px; border-radius:50%; background:currentColor; opacity:.7; }
+
+  /* PROGRESS BAR */
+  .prog-wrap { display: flex; align-items: center; gap: 8px; }
+  .prog-bar { flex: 1; height: 6px; background: var(--bg); border-radius: 3px; overflow: hidden; min-width: 60px; }
+  .prog-fill { height: 100%; border-radius: 3px; transition: width .3s; }
+  .prog-pct { font-size: 12px; font-weight: 600; color: var(--text-secondary); white-space: nowrap; }
+
+  /* RECOMMENDATIONS */
+  .rec-list { display: flex; flex-direction: column; gap: 12px; }
+  .rec-card {
+    background: var(--card-bg); border-radius: 14px;
+    padding: 16px 20px; box-shadow: var(--shadow);
+    border: 1px solid rgba(0,0,0,0.04);
+    display: flex; gap: 14px; align-items: flex-start;
+  }
+  .rec-priority {
+    width: 6px; min-width: 6px; height: 100%; border-radius: 3px;
+    align-self: stretch; margin-top: 0;
+  }
+  .rec-body { flex: 1; }
+  .rec-text { font-size: 14px; color: var(--text); line-height: 1.5; }
+  .rec-meta { margin-top: 6px; font-size: 12px; color: var(--text-secondary); display: flex; gap: 12px; flex-wrap: wrap; }
+
+  /* TWO COLS */
+  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  @media (max-width: 768px) { .two-col { grid-template-columns: 1fr; } }
+
+  /* SCORE CIRCLE — for data quality */
+  .score { font-size: 13.5px; font-weight: 700; }
+
+  /* EMPTY */
+  .empty { text-align: center; padding: 40px; color: var(--text-secondary); font-size: 14px; }
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="nav-brand">Executive<span>AI</span></div>
+  <div class="seg-wrap">
+    <div class="segmented" id="tabs">
+      <button class="seg-btn active" data-tab="summary">Сводка</button>
+      <button class="seg-btn" data-tab="ceo">CEO</button>
+      <button class="seg-btn" data-tab="cio">CIO</button>
+      <button class="seg-btn" data-tab="cdo">CDO</button>
+      <button class="seg-btn" data-tab="cto">CTO</button>
+      <button class="seg-btn" data-tab="caio">CAIO</button>
+    </div>
+  </div>
+  <div class="nav-date" id="nav-date"></div>
+</nav>
+
+<!-- ===== PAGES ===== -->
+<div id="page-summary" class="page active"></div>
+<div id="page-ceo" class="page"></div>
+<div id="page-cio" class="page"></div>
+<div id="page-cdo" class="page"></div>
+<div id="page-cto" class="page"></div>
+<div id="page-caio" class="page"></div>
+
+<script>
+// ── SEEDED PRNG ──────────────────────────────────────────────────────────────
+function Rng(seed) {
+  let s = seed >>> 0;
+  this.next = function() { s = (s * 1664525 + 1013904223) >>> 0; return s / 4294967296; };
+  this.int = (a, b) => Math.floor(this.next() * (b - a + 1)) + a;
+  this.pick = arr => arr[this.int(0, arr.length - 1)];
+  this.float = (a, b, d=1) => +((this.next() * (b - a) + a).toFixed(d));
+}
+const rng = new Rng(20260629);
+
+// ── HELPERS ──────────────────────────────────────────────────────────────────
+const fmt = n => n.toLocaleString('ru-RU');
+const fmtDate = d => d.toLocaleDateString('ru-RU', {day:'2-digit', month:'2-digit', year:'numeric'});
+
+function statusBadge(status) {
+  if (status === 'green' || status === 'norm') return badge('badge-green', 'Норма');
+  if (status === 'amber' || status === 'warn') return badge('badge-amber', 'Внимание');
+  if (status === 'red'   || status === 'crit') return badge('badge-red',   'Критично');
+  return badge('badge-gray', status);
+}
+function badge(cls, text) { return `<span class="badge ${cls}">${text}</span>`; }
+
+function progBar(pct, color) {
+  const c = color || (pct >= 80 ? '#1F8A44' : pct >= 50 ? '#C8780A' : '#D70015');
+  return `<div class="prog-wrap"><div class="prog-bar"><div class="prog-fill" style="width:${pct}%;background:${c}"></div></div><span class="prog-pct">${pct}%</span></div>`;
+}
+
+function severityBadge(sev) {
+  if (sev === 'Критический') return badge('badge-red', sev);
+  if (sev === 'Высокий')     return badge('badge-amber', sev);
+  if (sev === 'Средний')     return badge('badge-blue', sev);
+  return badge('badge-gray', sev);
+}
+
+function table(headers, rows) {
+  const ths = headers.map(h => `<th>${h}</th>`).join('');
+  if (!rows.length) return `<div class="table-wrap"><div class="empty">Нет данных по выбранным фильтрам</div></div>`;
+  const trs = rows.map(r => `<tr>${r.map(c => `<td>${c}</td>`).join('')}</tr>`).join('');
+  return `<div class="table-wrap"><table><thead><tr>${ths}</tr></thead><tbody>${trs}</tbody></table></div>`;
+}
+
+// ── DATA GENERATION ──────────────────────────────────────────────────────────
+function addDays(d, n) { const r = new Date(d); r.setDate(r.getDate() + n); return r; }
+const today = new Date(2026, 5, 29); // 29 June 2026
+
+// Systems
+const DOMAINS = ['ERP', 'CRM', 'BI / Аналитика', 'Инфраструктура', 'Кибербезопасность', 'ИИ-платформа', 'DWH', 'HRMS', 'Финансы'];
+const SYS_NAMES = [
+  'SAP ERP', '1С:ERP', 'Salesforce CRM', 'Microsoft Dynamics', 'Tableau / BI',
+  'Active Directory', 'Zabbix / Мониторинг', 'ML Platform', 'Oracle DWH',
+  'Kafka / Шина данных', '1С:ЗУП', 'Финансовая система', 'SIEM / SOC', 'K8s Кластер',
+  'API Gateway', 'Data Lake'
+];
+const OWNERS = ['А. Иванов', 'М. Петрова', 'С. Кузнецов', 'Д. Смирнова', 'Р. Волков', 'Е. Новикова', 'К. Лебедев'];
+
+const systems = SYS_NAMES.map((name, i) => {
+  const avail = rng.float(96.5, 99.95, 2);
+  const sla   = rng.pick([98.0, 99.0, 99.5]);
+  const status = avail >= sla ? 'green' : avail >= sla - 1 ? 'amber' : 'red';
+  const crit = rng.pick(['Критическая','Высокая','Средняя']);
+  return { name, domain: DOMAINS[i % DOMAINS.length], criticality: crit, availability: avail, slaTarget: sla, owner: rng.pick(OWNERS), updatedAt: addDays(today, -rng.int(0,5)), status };
+});
+
+// Incidents
+const INC_TITLES = [
+  'Недоступность SAP ERP в регионах', 'Сбой интеграции CRM → DWH', 'Деградация API Gateway',
+  'Инцидент безопасности: аномальный трафик', 'Ошибки в отчётах BI', 'Падение ML-платформы',
+  'Перебои в 1С:ЗУП', 'Задержки репликации данных', 'Сбой Kafka', 'Превышение SLA по финансовой системе',
+  'Уязвимость в AD', 'Недоступность Data Lake', 'Ошибки в SIEM', 'Отказ K8s нод',
+  'Потеря сессий в CRM', 'Аварийный рестарт Oracle DWH'
+];
+const INC_SEV = ['Критический','Высокий','Средний','Низкий'];
+const INC_STATUS = ['Открыт','В работе','Закрыт'];
+
+const incidents = INC_TITLES.map((title, i) => {
+  const sev  = INC_SEV[rng.int(0,3)];
+  const stat = INC_STATUS[rng.int(0,2)];
+  const created = addDays(today, -rng.int(0, 60));
+  const closed  = stat === 'Закрыт' ? addDays(created, rng.int(1,10)) : null;
+  const react = rng.float(0.5, 48, 1);
+  return { id: `INC-${1000+i}`, title, system: rng.pick(SYS_NAMES), severity: sev, status: stat, createdAt: created, closedAt: closed, owner: rng.pick(OWNERS), reactionHours: react };
+});
+
+// Risks
+const RISK_NAMES = [
+  'Потеря доступности ключевых систем', 'Утечка персональных данных', 'Дрейф ML-моделей',
+  'Несоответствие данных регуляторным требованиям', 'Атака на периметр', 'Критические уязвимости в ПО',
+  'Недостаточное качество данных для ИИ', 'Несанкционированный доступ к DWH',
+  'Аппаратный отказ в ЦОД', 'Зависимость от единственного вендора ПО',
+  'Ошибка AI-решения в prod', 'Нехватка компетенций по MLOps'
+];
+const RISK_CATS = ['Технологический','Данные','Кибербезопасность','AI'];
+const PLANS = [
+  'Внедрить резервирование','Провести аудит безопасности','Настроить алерты дрейфа',
+  'Обновить регламенты','Усилить защиту периметра','Патчинг критичных систем',
+  'Улучшить DQ-процессы','Расширить права доступа с MFA','Обновить железо ЦОД',
+  'Диверсифицировать вендоров','Расширить мониторинг AI','Нанять MLOps-инженеров'
+];
+
+const risks = RISK_NAMES.map((name, i) => {
+  const prob   = rng.int(1, 5);
+  const impact = rng.int(1, 5);
+  const level  = prob * impact;
+  const cat    = RISK_CATS[i % RISK_CATS.length];
+  return { name, category: cat, probability: prob, impact, level, owner: rng.pick(OWNERS), mitigationPlan: PLANS[i] };
+});
+risks.sort((a, b) => b.level - a.level);
+
+// Projects
+const PROJ_NAMES = [
+  'Внедрение ML Platform v2', 'Миграция на облако (Azure)', 'Трансформация DWH',
+  'Программа киберзащиты 2026', 'BI Next Generation', 'Data Governance программа',
+  'Автоматизация HR-процессов', 'Масштабирование AI use-cases', 'Переход на SAP S/4HANA',
+  'Внедрение SIEM нового поколения'
+];
+const PROJ_ROLES = ['CIO','CDO','CTO','CAIO','CEO'];
+
+const projects = PROJ_NAMES.map((name, i) => {
+  const progress = rng.int(10, 95);
+  const budgetPlan = rng.int(20, 200) * 1_000_000;
+  const dev  = rng.float(-5, 35, 1);
+  const budgetFact = Math.round(budgetPlan * (1 + dev / 100));
+  const status = progress >= 70 && dev < 10 ? 'green' : progress >= 40 || dev < 20 ? 'amber' : 'red';
+  const deadline = addDays(today, rng.int(-30, 180));
+  return { name, owner: rng.pick(OWNERS), role: PROJ_ROLES[i % PROJ_ROLES.length], progress, budgetPlan, budgetFact, deviation: dev, deadline, status };
+});
+
+// Data Quality
+const DQ_SOURCES = ['SAP ERP','1С:ЗУП','Oracle DWH','Salesforce CRM','Kafka','Data Lake','Финансовая система','HRMS'];
+const INT_STATUS = ['OK','Деградация','Ошибка'];
+
+const dataQuality = DQ_SOURCES.map(source => {
+  const completeness = rng.float(72, 99.5, 1);
+  const accuracy     = rng.float(75, 99.5, 1);
+  const timeliness   = rng.float(70, 99.5, 1);
+  const score = +((completeness + accuracy + timeliness) / 3).toFixed(1);
+  const status = score >= 90 ? 'green' : score >= 75 ? 'amber' : 'red';
+  const intSt = rng.pick(INT_STATUS);
+  return { source, completeness, accuracy, timeliness, overallScore: score, status, integrationStatus: intSt };
+});
+
+// AI Initiatives
+const AI_NAMES = [
+  'Предиктивное обслуживание оборудования', 'AI-ассистент для поддержки клиентов',
+  'Оптимизация цепочки поставок (ML)', 'Fraud Detection в финансах',
+  'Автоматическая сегментация клиентов', 'Прогнозирование спроса',
+  'AI-генерация отчётов', 'Аномалии в логах (SIEM AI)',
+  'Рекомендательная система для CRM', 'NLP-обработка документов'
+];
+const AI_DOMAINS = ['Производство','Продажи','Логистика','Финансы','Маркетинг','Коммерция','Аналитика','Безопасность'];
+const AI_MATURITY = ['Идея','Пилот','Тестирование','Масштабируется','Производство'];
+
+const aiInitiatives = AI_NAMES.map((name, i) => {
+  const maturity  = AI_MATURITY[rng.int(1, 4)];
+  const adoption  = rng.int(5, 95);
+  const effect    = rng.float(0.5, 45, 1);
+  const status    = adoption >= 60 ? 'green' : adoption >= 30 ? 'amber' : 'red';
+  return { name, domain: AI_DOMAINS[i % AI_DOMAINS.length], maturity, adoption, effect, status, owner: rng.pick(OWNERS) };
+});
+
+// Recommendations
+const RECS = [
+  { text: 'Немедленно эскалировать инцидент INC-1000 (SAP ERP) — нарушен SLA для критического бизнес-процесса.', role: 'CIO', priority: 'Высокий', days: 1 },
+  { text: 'Утвердить бюджет на устранение уязвимости в AD до конца недели.', role: 'CTO', priority: 'Высокий', days: 3 },
+  { text: 'Пересмотреть приоритеты портфеля AI: проекты с дрейфом модели требуют немедленного ревью.', role: 'CAIO', priority: 'Высокий', days: 5 },
+  { text: 'Согласовать Data Governance политику — 3 источника данных не соответствуют требованиям.', role: 'CDO', priority: 'Высокий', days: 7 },
+  { text: 'Запланировать стратегическую сессию по миграции в облако — проект отстаёт от плана.', role: 'CEO', priority: 'Средний', days: 14 },
+  { text: 'Расширить команду MLOps: дефицит компетенций тормозит масштабирование AI.', role: 'CAIO', priority: 'Средний', days: 14 },
+  { text: 'Инициировать аудит поставщика BI-системы — SLA нарушался 3 раза за квартал.', role: 'CIO', priority: 'Средний', days: 21 },
+  { text: 'Обновить регламент обработки данных в соответствии с новыми требованиями регулятора.', role: 'CDO', priority: 'Низкий', days: 45 },
+  { text: 'Организовать демонстрацию AI-эффекта для совета директоров (измеримый ROI).', role: 'CEO', priority: 'Низкий', days: 30 },
+  { text: 'Пересмотреть архитектуру Kafka — задержки репликации влияют на качество данных.', role: 'CTO', priority: 'Низкий', days: 30 },
+];
+const recommendations = RECS.map(r => ({ ...r, deadline: addDays(today, r.days) }));
+
+// ── FILTER STATE ──────────────────────────────────────────────────────────────
+const filters = { period: 'all', system: 'all', status: 'all', criticality: 'all' };
+
+function applyFilters(items, opts = {}) {
+  return items.filter(item => {
+    if (filters.status !== 'all' && item.status) {
+      const map = { norm: 'green', warn: 'amber', crit: 'red' };
+      if (item.status !== (map[filters.status] || filters.status)) return false;
+    }
+    if (filters.system !== 'all' && item.system && item.system !== filters.system) return false;
+    if (filters.period !== 'all' && item.createdAt) {
+      const days = { '7': 7, '30': 30, '90': 90 };
+      const cutoff = addDays(today, -(days[filters.period] || 0));
+      if (item.createdAt < cutoff) return false;
+    }
+    if (filters.criticality !== 'all' && item.criticality) {
+      const map = { low: 'Средняя', mid: 'Высокая', high: 'Критическая' };
+      if (item.criticality !== map[filters.criticality]) return false;
+    }
+    if (filters.criticality !== 'all' && item.severity) {
+      const map2 = { low: 'Низкий', mid: 'Средний', high: ['Критический','Высокий'] };
+      const val = map2[filters.criticality];
+      if (Array.isArray(val)) { if (!val.includes(item.severity)) return false; }
+      else if (item.severity !== val) return false;
+    }
+    return true;
+  });
+}
+
+// ── RENDER HELPERS ────────────────────────────────────────────────────────────
+function renderFilters(id, opts = {}) {
+  const sysOptions = ['<option value="all">Все системы</option>',
+    ...SYS_NAMES.map(s => `<option value="${s}">${s}</option>`)].join('');
+  return `<div class="filters" id="${id}">
+    <div class="filter-group"><span class="filter-label">Период:</span>
+      <select onchange="setFilter('period',this.value)">
+        <option value="all">Весь период</option>
+        <option value="7">7 дней</option>
+        <option value="30">30 дней</option>
+        <option value="90">90 дней</option>
+      </select></div>
+    <div class="filter-group"><span class="filter-label">Система:</span>
+      <select onchange="setFilter('system',this.value)">${sysOptions}</select></div>
+    <div class="filter-group"><span class="filter-label">Статус:</span>
+      <select onchange="setFilter('status',this.value)">
+        <option value="all">Любой</option>
+        <option value="norm">Норма</option>
+        <option value="warn">Внимание</option>
+        <option value="crit">Критично</option>
+      </select></div>
+    <div class="filter-group"><span class="filter-label">Критичность:</span>
+      <select onchange="setFilter('criticality',this.value)">
+        <option value="all">Любая</option>
+        <option value="high">Высокая</option>
+        <option value="mid">Средняя</option>
+        <option value="low">Низкая</option>
+      </select></div>
+  </div>`;
+}
+
+function kpi(label, value, sub, dotClass) {
+  return `<div class="kpi-card">
+    <div class="kpi-header"><div class="kpi-dot ${dotClass}"></div><div class="kpi-label">${label}</div></div>
+    <div class="kpi-value">${value}</div>
+    ${sub ? `<div class="kpi-sub">${sub}</div>` : ''}
+  </div>`;
+}
+
+function systemsTable(items) {
+  return table(['Система','Домен','Критичность','Доступность','SLA','Статус','Владелец'],
+    items.map(s => [
+      `<strong>${s.name}</strong>`, s.domain, s.criticality,
+      `<strong>${s.availability}%</strong>`, `${s.slaTarget}%`,
+      statusBadge(s.status), s.owner
+    ]));
+}
+
+function incidentsTable(items) {
+  return table(['ID','Заголовок','Система','Критичность','Статус','Дата','Реакция','Владелец'],
+    items.map(i => [
+      `<code>${i.id}</code>`, i.title, i.system,
+      severityBadge(i.severity),
+      i.status === 'Закрыт' ? badge('badge-green','Закрыт') : i.status === 'В работе' ? badge('badge-blue','В работе') : badge('badge-red','Открыт'),
+      fmtDate(i.createdAt), `${i.reactionHours} ч`, i.owner
+    ]));
+}
+
+function risksTable(items) {
+  const lvlBadge = l => l >= 15 ? badge('badge-red','Высокий') : l >= 8 ? badge('badge-amber','Средний') : badge('badge-green','Низкий');
+  return table(['Риск','Категория','Вероятность','Влияние','Уровень','Владелец','План'],
+    items.map(r => [
+      `<strong>${r.name}</strong>`, r.category, `${r.probability}/5`, `${r.impact}/5`,
+      lvlBadge(r.level), r.owner, `<span style="font-size:12px;color:var(--text-secondary)">${r.mitigationPlan}</span>`
+    ]));
+}
+
+function projectsTable(items) {
+  return table(['Проект','Прогресс','Бюджет план','Бюджет факт','Откл.','Срок','Статус'],
+    items.map(p => {
+      const devColor = p.deviation < 10 ? 'var(--green)' : p.deviation < 25 ? 'var(--amber)' : 'var(--red)';
+      return [
+        `<strong>${p.name}</strong>`,
+        progBar(p.progress),
+        `${fmt(Math.round(p.budgetPlan/1e6))} млн`,
+        `${fmt(Math.round(p.budgetFact/1e6))} млн`,
+        `<span style="color:${devColor};font-weight:600">+${p.deviation}%</span>`,
+        fmtDate(p.deadline),
+        statusBadge(p.status)
+      ];
+    }));
+}
+
+function dqTable(items) {
+  const intBadge = s => s === 'OK' ? badge('badge-green','OK') : s === 'Деградация' ? badge('badge-amber','Деградация') : badge('badge-red','Ошибка');
+  return table(['Источник','Полнота','Точность','Своевременность','Индекс','Интеграция','Статус'],
+    items.map(d => [
+      `<strong>${d.source}</strong>`,
+      `<span class="score">${d.completeness}%</span>`,
+      `<span class="score">${d.accuracy}%</span>`,
+      `<span class="score">${d.timeliness}%</span>`,
+      `<strong>${d.overallScore}%</strong>`,
+      intBadge(d.integrationStatus),
+      statusBadge(d.status)
+    ]));
+}
+
+function aiTable(items) {
+  const matBadge = m => m === 'Производство' ? badge('badge-green',m) : m === 'Масштабируется' ? badge('badge-blue',m) : m === 'Тестирование' ? badge('badge-amber',m) : badge('badge-gray',m);
+  return table(['AI Use-case','Домен','Зрелость','Внедрение','Эффект (млн/мес)','Статус','Владелец'],
+    items.map(a => [
+      `<strong>${a.name}</strong>`, a.domain, matBadge(a.maturity),
+      progBar(a.adoption), `<strong>${a.effect}</strong>`,
+      statusBadge(a.status), a.owner
+    ]));
+}
+
+function recsHtml(items, roleFilter) {
+  const filtered = roleFilter ? items.filter(r => r.role === roleFilter || !roleFilter) : items;
+  const prioColor = p => p === 'Высокий' ? 'var(--red)' : p === 'Средний' ? 'var(--amber)' : 'var(--green)';
+  return `<div class="rec-list">${filtered.map(r => `
+    <div class="rec-card">
+      <div class="rec-priority" style="background:${prioColor(r.priority)}"></div>
+      <div class="rec-body">
+        <div class="rec-text">${r.text}</div>
+        <div class="rec-meta">
+          <span>Роль: <strong>${r.role}</strong></span>
+          <span>Приоритет: <strong style="color:${prioColor(r.priority)}">${r.priority}</strong></span>
+          <span>Срок: <strong>${fmtDate(r.deadline)}</strong></span>
+        </div>
+      </div>
+    </div>`).join('')}</div>`;
+}
+
+// ── PAGE RENDERERS ────────────────────────────────────────────────────────────
+function renderSummary() {
+  const totalSys = systems.length;
+  const normSys  = systems.filter(s => s.status === 'green').length;
+  const openInc  = incidents.filter(i => i.status !== 'Закрыт').length;
+  const critInc  = incidents.filter(i => i.severity === 'Критический' && i.status !== 'Закрыт').length;
+  const highRisks= risks.filter(r => r.level >= 15).length;
+  const delayProj= projects.filter(p => p.status === 'red').length;
+  const totalAIEffect = aiInitiatives.reduce((s, a) => s + a.effect, 0).toFixed(1);
+
+  const filteredSys = applyFilters(systems);
+  const filteredInc = applyFilters(incidents);
+
+  document.getElementById('page-summary').innerHTML = `
+  <div class="hero"><h1>Executive AI Dashboard</h1><p>Единый экран управления цифровым контуром компании</p></div>
+  <div class="container">
+    <div class="section">
+      <div class="kpi-grid">
+        ${kpi('Систем в норме', `${normSys}/${totalSys}`, `${Math.round(normSys/totalSys*100)}% в пределах SLA`, 'dot-green')}
+        ${kpi('Открытых инцидентов', openInc, `${critInc} критических`, critInc > 0 ? 'dot-red' : 'dot-amber')}
+        ${kpi('Рисков высокого уровня', highRisks, 'требуют решения', highRisks > 3 ? 'dot-red' : 'dot-amber')}
+        ${kpi('Проектов с отклонением', delayProj, 'статус: критично', delayProj > 2 ? 'dot-red' : 'dot-amber')}
+        ${kpi('Эффект AI-портфеля', `${totalAIEffect}`, 'млн руб/мес', 'dot-blue')}
+      </div>
+    </div>
+    <div class="section">
+      <div class="section-title">Фильтры</div>
+      ${renderFilters('flt-summary')}
+    </div>
+    <div class="section">
+      <div class="section-title">Состояние ИТ-систем</div>
+      ${systemsTable(filteredSys)}
+    </div>
+    <div class="section">
+      <div class="section-title">Активные инциденты</div>
+      ${incidentsTable(filteredInc.filter(i => i.status !== 'Закрыт').slice(0, 8))}
+    </div>
+    <div class="two-col section">
+      <div>
+        <div class="section-title">Топ-5 рисков</div>
+        ${risksTable(risks.slice(0, 5))}
+      </div>
+      <div>
+        <div class="section-title">AI-инициативы (сводка)</div>
+        ${aiTable(aiInitiatives.slice(0, 5))}
+      </div>
+    </div>
+    <div class="section">
+      <div class="section-title">Управленческие рекомендации</div>
+      ${recsHtml(recommendations)}
+    </div>
+  </div>`;
+}
+
+function renderCEO() {
+  const normSys = systems.filter(s => s.status === 'green').length;
+  const critInc = incidents.filter(i => i.severity === 'Критический' && i.status !== 'Закрыт').length;
+  const aiEffect = aiInitiatives.reduce((s, a) => s + a.effect, 0).toFixed(1);
+  const budgetOverrun = projects.filter(p => p.deviation > 20).length;
+
+  document.getElementById('page-ceo').innerHTML = `
+  <div class="hero"><h1>CEO Dashboard</h1><p>Стратегический обзор цифрового контура компании</p></div>
+  <div class="container">
+    <div class="section"><div class="kpi-grid">
+      ${kpi('Стабильность контура', `${Math.round(normSys/systems.length*100)}%`, 'систем в норме', normSys/systems.length > .9 ? 'dot-green' : 'dot-amber')}
+      ${kpi('Критических инцидентов', critInc, 'требуют эскалации', critInc > 0 ? 'dot-red' : 'dot-green')}
+      ${kpi('AI-эффект', `${aiEffect}`, 'млн руб/мес суммарно', 'dot-blue')}
+      ${kpi('Бюджетных превышений', budgetOverrun, 'проектов >20% отклонения', budgetOverrun > 2 ? 'dot-red' : 'dot-amber')}
+    </div></div>
+    <div class="section"><div class="section-title">Проектный портфель</div>${projectsTable(projects)}</div>
+    <div class="section"><div class="section-title">AI-портфель</div>${aiTable(aiInitiatives)}</div>
+    <div class="section"><div class="section-title">Рекомендации для CEO</div>${recsHtml(recommendations.filter(r => r.role === 'CEO'))}</div>
+  </div>`;
+}
+
+function renderCIO() {
+  const filteredSys = applyFilters(systems);
+  const filteredInc = applyFilters(incidents);
+  const slaViol  = systems.filter(s => s.status !== 'green').length;
+  const openIT   = incidents.filter(i => i.status !== 'Закрыт').length;
+  const ioProj   = projects.filter(p => p.role === 'CIO').length;
+  const avgAvail = (systems.reduce((s, x) => s + x.availability, 0) / systems.length).toFixed(2);
+
+  document.getElementById('page-cio').innerHTML = `
+  <div class="hero"><h1>CIO Dashboard</h1><p>ИТ-системы, доступность, SLA, инциденты и проекты</p></div>
+  <div class="container">
+    <div class="section"><div class="kpi-grid">
+      ${kpi('Средняя доступность', `${avgAvail}%`, 'по всем системам', +avgAvail >= 99 ? 'dot-green' : 'dot-amber')}
+      ${kpi('Нарушений SLA', slaViol, 'систем ниже целевого', slaViol > 2 ? 'dot-red' : 'dot-amber')}
+      ${kpi('Открытых инцидентов', openIT, 'все категории', openIT > 5 ? 'dot-red' : 'dot-amber')}
+      ${kpi('ИТ-проектов в портфеле', ioProj, 'под управлением CIO', 'dot-blue')}
+    </div></div>
+    <div class="section"><div class="section-title">Фильтры</div>${renderFilters('flt-cio')}</div>
+    <div class="section"><div class="section-title">Состояние ИТ-систем</div>${systemsTable(filteredSys)}</div>
+    <div class="section"><div class="section-title">Инциденты</div>${incidentsTable(filteredInc)}</div>
+    <div class="section"><div class="section-title">ИТ-проекты</div>${projectsTable(projects.filter(p => p.role === 'CIO'))}</div>
+    <div class="section"><div class="section-title">Рекомендации для CIO</div>${recsHtml(recommendations.filter(r => r.role === 'CIO'))}</div>
+  </div>`;
+}
+
+function renderCDO() {
+  const dqOk   = dataQuality.filter(d => d.status === 'green').length;
+  const dqWarn = dataQuality.filter(d => d.status === 'amber').length;
+  const dqCrit = dataQuality.filter(d => d.status === 'red').length;
+  const avgScore = (dataQuality.reduce((s, d) => s + d.overallScore, 0) / dataQuality.length).toFixed(1);
+  const intOk  = dataQuality.filter(d => d.integrationStatus === 'OK').length;
+  const dataRisks = risks.filter(r => r.category === 'Данные').length;
+
+  document.getElementById('page-cdo').innerHTML = `
+  <div class="hero"><h1>CDO Dashboard</h1><p>Качество данных, интеграции и data-риски</p></div>
+  <div class="container">
+    <div class="section"><div class="kpi-grid">
+      ${kpi('Средний индекс качества', `${avgScore}%`, 'по всем источникам', +avgScore >= 90 ? 'dot-green' : +avgScore >= 75 ? 'dot-amber' : 'dot-red')}
+      ${kpi('Источников в норме', `${dqOk}/${dataQuality.length}`, `${dqWarn} в внимании, ${dqCrit} критично`, dqCrit > 0 ? 'dot-red' : 'dot-amber')}
+      ${kpi('Интеграций OK', `${intOk}/${dataQuality.length}`, 'активные интеграции', intOk === dataQuality.length ? 'dot-green' : 'dot-amber')}
+      ${kpi('Data-рисков', dataRisks, 'в реестре рисков', dataRisks > 2 ? 'dot-red' : 'dot-amber')}
+    </div></div>
+    <div class="section"><div class="section-title">Качество данных по источникам</div>${dqTable(dataQuality)}</div>
+    <div class="section"><div class="section-title">Data-риски</div>${risksTable(risks.filter(r => r.category === 'Данные'))}</div>
+    <div class="section"><div class="section-title">CDO-проекты</div>${projectsTable(projects.filter(p => p.role === 'CDO'))}</div>
+    <div class="section"><div class="section-title">Рекомендации для CDO</div>${recsHtml(recommendations.filter(r => r.role === 'CDO'))}</div>
+  </div>`;
+}
+
+function renderCTO() {
+  const filteredInc = applyFilters(incidents);
+  const critInc  = incidents.filter(i => i.severity === 'Критический').length;
+  const cyberRisks = risks.filter(r => r.category === 'Кибербезопасность').length;
+  const techRisks  = risks.filter(r => r.category === 'Технологический').length;
+  const infraProj  = projects.filter(p => p.role === 'CTO').length;
+
+  document.getElementById('page-cto').innerHTML = `
+  <div class="hero"><h1>CTO Dashboard</h1><p>Инфраструктура, кибербезопасность и технологические риски</p></div>
+  <div class="container">
+    <div class="section"><div class="kpi-grid">
+      ${kpi('Критических инцидентов', critInc, 'всего за период', critInc > 3 ? 'dot-red' : 'dot-amber')}
+      ${kpi('Киберрисков', cyberRisks, 'в реестре', cyberRisks > 2 ? 'dot-red' : 'dot-amber')}
+      ${kpi('Технологических рисков', techRisks, 'требуют mitigation', techRisks > 2 ? 'dot-amber' : 'dot-green')}
+      ${kpi('Инфра-проектов', infraProj, 'в портфеле CTO', 'dot-blue')}
+    </div></div>
+    <div class="section"><div class="section-title">Фильтры</div>${renderFilters('flt-cto')}</div>
+    <div class="section"><div class="section-title">Критические и высокие инциденты</div>${incidentsTable(filteredInc.filter(i => ['Критический','Высокий'].includes(i.severity)))}</div>
+    <div class="section"><div class="two-col">
+      <div><div class="section-title">Киберриски</div>${risksTable(risks.filter(r => r.category === 'Кибербезопасность'))}</div>
+      <div><div class="section-title">Технологические риски</div>${risksTable(risks.filter(r => r.category === 'Технологический'))}</div>
+    </div></div>
+    <div class="section"><div class="section-title">Инфра-проекты</div>${projectsTable(projects.filter(p => p.role === 'CTO'))}</div>
+    <div class="section"><div class="section-title">Рекомендации для CTO</div>${recsHtml(recommendations.filter(r => r.role === 'CTO'))}</div>
+  </div>`;
+}
+
+function renderCAIO() {
+  const aiProd   = aiInitiatives.filter(a => a.maturity === 'Производство' || a.maturity === 'Масштабируется').length;
+  const aiEffect = aiInitiatives.reduce((s, a) => s + a.effect, 0).toFixed(1);
+  const aiRisks  = risks.filter(r => r.category === 'AI').length;
+  const avgAdopt = Math.round(aiInitiatives.reduce((s, a) => s + a.adoption, 0) / aiInitiatives.length);
+
+  document.getElementById('page-caio').innerHTML = `
+  <div class="hero"><h1>CAIO Dashboard</h1><p>AI use-cases, зрелость внедрения и AI-риски</p></div>
+  <div class="container">
+    <div class="section"><div class="kpi-grid">
+      ${kpi('Зрелых AI-инициатив', `${aiProd}/${aiInitiatives.length}`, 'в производстве / масштабируется', 'dot-green')}
+      ${kpi('Суммарный AI-эффект', `${aiEffect}`, 'млн руб/мес', 'dot-blue')}
+      ${kpi('Среднее внедрение', `${avgAdopt}%`, 'по портфелю', avgAdopt >= 60 ? 'dot-green' : 'dot-amber')}
+      ${kpi('AI-рисков', aiRisks, 'в реестре рисков', aiRisks > 2 ? 'dot-red' : 'dot-amber')}
+    </div></div>
+    <div class="section"><div class="section-title">AI-портфель</div>${aiTable(aiInitiatives)}</div>
+    <div class="section"><div class="section-title">AI-риски</div>${risksTable(risks.filter(r => r.category === 'AI'))}</div>
+    <div class="section"><div class="section-title">AI-проекты</div>${projectsTable(projects.filter(p => p.role === 'CAIO'))}</div>
+    <div class="section"><div class="section-title">Рекомендации для CAIO</div>${recsHtml(recommendations.filter(r => r.role === 'CAIO'))}</div>
+  </div>`;
+}
+
+// ── ROUTING ───────────────────────────────────────────────────────────────────
+const renderers = { summary: renderSummary, ceo: renderCEO, cio: renderCIO, cdo: renderCDO, cto: renderCTO, caio: renderCAIO };
+let currentTab = 'summary';
+
+function setFilter(key, value) {
+  filters[key] = value;
+  renderCurrent();
+}
+
+function renderCurrent() { renderers[currentTab](); }
+
+document.getElementById('tabs').addEventListener('click', e => {
+  const btn = e.target.closest('.seg-btn');
+  if (!btn) return;
+  const tab = btn.dataset.tab;
+  document.querySelectorAll('.seg-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.getElementById('page-' + tab).classList.add('active');
+  currentTab = tab;
+  renderCurrent();
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+});
+
+// Date
+document.getElementById('nav-date').textContent = today.toLocaleDateString('ru-RU', {day:'2-digit',month:'long',year:'numeric'});
+
+// Init
+renderSummary();
+</script>
+</body>
+</html>
